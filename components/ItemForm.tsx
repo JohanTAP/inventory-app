@@ -1,7 +1,8 @@
+// src/components/ItemForm.tsx
 'use client';
 
 import { useState } from "react";
-import { ref, set, get } from "firebase/database";
+import { ref, set, get, onDisconnect } from "firebase/database";
 import { db } from "@/lib/firebase.config";
 
 export default function ItemForm ()
@@ -14,13 +15,12 @@ export default function ItemForm ()
     {
         e.preventDefault();
 
-        // Convierte el nombre del item en una clave única
-        const itemKey = name.toLowerCase().replace( /\s+/g, "_" ); // Reemplaza espacios por "_"
+        const itemKey = name.toLowerCase().replace( /\s+/g, "_" ); // Convierte el nombre a una clave única
         const itemRef = ref( db, `items/${ itemKey }` );
 
         try
         {
-            // Verificar si ya existe
+            // Verificar si el item ya existe
             const snapshot = await get( itemRef );
             if ( snapshot.exists() )
             {
@@ -28,15 +28,21 @@ export default function ItemForm ()
                 return;
             }
 
-            // Guardar el item en Firebase
+            // Configurar operación en caso de desconexión
+            onDisconnect( itemRef ).set( { quantity } ).then( () =>
+            {
+                console.log( "Operación configurada para sincronizar al reconectar." );
+            } );
+
+            // Guardar item en Firebase
             await set( itemRef, { quantity } );
             setName( "" );
             setQuantity( 1 );
-            setError( null ); // Limpia cualquier error previo
+            setError( null );
         } catch ( err )
         {
             console.error( err );
-            setError( "Ocurrió un error al guardar el item." );
+            setError( "Error al guardar el item." );
         }
     };
 
